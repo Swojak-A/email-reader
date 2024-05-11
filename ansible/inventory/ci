@@ -1,0 +1,5 @@
+[machine]
+localhost
+
+[ci:children]
+machine

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+export GIT_HEAD=$(git rev-parse --short=12 HEAD)
+ansible-playbook -i ansible/inventory/build ansible/build-environment.yml --vault-password-file .vault_pass
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker build -t email-reader -f Dockerfile .
+./docker/scripts/generate-docker-compose
+chmod 600 .datastore/rabbitmq/.erlang.cookie || true # for .erlang.cookie permission issue
+$(if which docker-compose >/dev/null 2>&1; then echo docker-compose; else echo docker compose; fi) up -d

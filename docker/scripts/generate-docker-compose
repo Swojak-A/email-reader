@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -e
+
+ENVIRONMENT=$1
+DOCKER_TAG=$2
+
+if [ -z "${ENVIRONMENT}" ]; then
+  ENVIRONMENT=local
+fi
+
+GIT_HEAD=$(git rev-parse --short=12 HEAD)
+
+if [ ${ENVIRONMENT} == 'ci' ]
+then
+    ENVIRONMENT=${ENVIRONMENT} VERSION=${GIT_HEAD} DOCKER_TAG=$DOCKER_TAG ansible-playbook ansible/generate-docker-compose.yml -i ansible/inventory/ci --vault-password-file ./.vault_pass
+else
+    ENVIRONMENT=${ENVIRONMENT} VERSION=${GIT_HEAD} DOCKER_TAG=$DOCKER_TAG ansible-playbook ansible/generate-docker-compose.yml -i ansible/inventory/local --vault-password-file ./.vault_pass
+fi

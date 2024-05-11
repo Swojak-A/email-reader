@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+STATE=NOT_RUN
+WAIT=1
+
+is_alive() {
+    WAIT=$((WAIT+1))
+    if [[ $WAIT -le 180 ]]; then
+        DB_CON_OK=$(PGPASSWORD=$DATABASE_PASSWORD psql -h $DATABASE_HOST -U $DATABASE_USER -p $DATABASE_PORT -t -A -c "SELECT datname FROM pg_database WHERE datname='$DATABASE_NAME'" $DATABASE_NAME | grep -i $DATABASE_NAME)
+        if [[ $DB_CON_OK == "$DATABASE_NAME" ]]; then
+            echo "Postgres is up and running"
+            STATE=RUN
+        fi
+    else
+       exit
+    fi
+}
+
+while [ $STATE == "NOT_RUN" ]; do
+    echo "Waiting for postgres..."
+    is_alive
+    sleep 1
+done

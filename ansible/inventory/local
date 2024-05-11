@@ -1,0 +1,5 @@
+[machine]
+localhost
+
+[local:children]
+machine

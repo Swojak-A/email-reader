@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+cd /backend || exit
+
+black --fast --config /backend/pyproject.toml /backend

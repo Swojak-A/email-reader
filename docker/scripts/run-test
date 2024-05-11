@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -e
+
+/scripts/wait-for-postgres
+cd /backend
+
+EXIT_STATUS=0
+DJANGO_SETTINGS_MODULE=config.settings
+
+echo "Compiling messages - stdout dropped.."
+python manage.py compilemessages -l pl -l en > /dev/null
+pytest --junit-xml=report.xml -o junit_family=xunit1 --cov=. --cov-report=xml || EXIT_STATUS=$?
+coverage report
+
+exit $EXIT_STATUS

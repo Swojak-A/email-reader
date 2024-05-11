@@ -1,0 +1,123 @@
+name: Email Reader CI
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+    branches:
+      - master
+      - develop
+
+env:
+  ENVIRONMENT: "ci"
+  APP_IMAGE: "swojak/email-reader"
+  COMPOSE_IGNORE_ORPHANS: "True"
+  DOCKER_BUILDKIT: "1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Set Vault password
+      run: echo ${{ secrets.VAULT_PASSWORD }} > .vault_pass
+    - name: Set dynamic variable - GIT_HEAD
+      run: |
+        echo "GIT_HEAD=$(git rev-parse --short=12 HEAD)" >> $GITHUB_ENV
+    - name: Set dynamic variable - DOCKER_TAG
+      run: |
+        echo "DOCKER_TAG=$GIT_HEAD" >> $GITHUB_ENV
+    - name: Before script
+      run: |
+        ansible-playbook -i ansible/inventory/build ansible/build-environment.yml --vault-password-file ./.vault_pass
+        ./docker/scripts/generate-docker-compose $ENVIRONMENT $DOCKER_TAG
+    - name: Build Docker image
+      run: |
+        docker build --pull -t $APP_IMAGE:$DOCKER_TAG .
+    - name: Push Image to Docker Hub
+      run: |
+        docker push $APP_IMAGE:$DOCKER_TAG
+        
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Set Vault password
+      run: echo ${{ secrets.VAULT_PASSWORD }} > .vault_pass
+    - name: Set dynamic variable - GIT_HEAD
+      run: |
+        echo "GIT_HEAD=$(git rev-parse --short=12 HEAD)" >> $GITHUB_ENV
+    - name: Set dynamic variable - DOCKER_TAG
+      run: |
+        echo "DOCKER_TAG=$GIT_HEAD" >> $GITHUB_ENV
+    - name: Pull Docker Image
+      run: |
+        docker pull $APP_IMAGE:$DOCKER_TAG
+    - name: Create Docker Compose YAML file
+      run: |
+        ./docker/scripts/generate-docker-compose $ENVIRONMENT $DOCKER_TAG
+    - name: Start Docker Compose Services
+      run: |
+        docker-compose up -d
+    - name: Run Tests
+      run: |
+        sleep 15
+        docker compose exec -T backend '/scripts/run-test'
+
+  verify:
+    needs: test
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Set Vault password
+      run: echo ${{ secrets.VAULT_PASSWORD }} > .vault_pass
+    - name: Set dynamic variable - GIT_HEAD
+      run: |
+        echo "GIT_HEAD=$(git rev-parse --short=12 HEAD)" >> $GITHUB_ENV
+    - name: Set dynamic variable - DOCKER_TAG
+      run: |
+        echo "DOCKER_TAG=$GIT_HEAD" >> $GITHUB_ENV
+    - name: Pull Docker Image
+      run: |
+        docker pull $APP_IMAGE:$DOCKER_TAG
+    - name: Create Docker Compose YAML file
+      run: |
+        ./docker/scripts/generate-docker-compose $ENVIRONMENT $DOCKER_TAG
+    - name: Start Docker Compose Services
+      run: |
+        docker-compose up -d
+    - name: Run Tests
+      run: |
+        sleep 15
+        docker compose exec -T backend '/scripts/run-verify'

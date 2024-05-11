@@ -1,0 +1,1 @@
+"""healthchecks app migrations."""

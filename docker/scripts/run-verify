@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+cd $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) || exit 1
+
+source verify-common
+
+/scripts/wait-for-postgres
+
+EXIT_STATUS=0
+_heading "Checking code with ruff linter"
+/scripts/verify-ruff-linter && tick || {
+  EXIT_STATUS=$?
+  cross
+}
+
+_spacing
+
+_heading "Formatting code with ruff formatter"
+/scripts/verify-ruff-formatter && tick || {
+  EXIT_STATUS=$?
+  cross
+}
+
+_spacing
+
+_heading "Running Django checks"
+cd /backend || exit
+./manage.py check && tick || {
+  EXIT_STATUS=$?
+  cross
+}
+
+_spacing
+
+_heading "Checking if there are any clashing migrations"
+cd /backend
+/scripts/verify-migration-clashes && tick || {
+  _display_message "Migrations above clash"
+  cross
+  EXIT_STATUS=1
+}
+
+_spacing
+
+_heading "Checking if any migration is missing"
+cd /backend
+/scripts/verify-missing-migrations && tick || {
+  _display_message "A migration above is missing"
+  cross
+  EXIT_STATUS=1
+}
+
+echo ""
+
+exit $EXIT_STATUS

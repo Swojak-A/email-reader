@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+cd /backend || exit # going to the main directory of the project
+
+isort . \
+  --check-only \
+  --diff

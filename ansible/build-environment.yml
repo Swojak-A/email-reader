@@ -1,0 +1,19 @@
+# vim: ft=ansible
+---
+
+- hosts: all
+  connection: local
+  gather_facts: False
+
+  tasks:
+    - name: Save application environment variables in the .build-environment file
+      template: src=templates/build.environment dest=./../.build-environment
+      vars:
+        environment_variables: "{{ ENV }}"
+    - name: Change date .build-environment file
+      file:
+        path: ./../.build-environment
+        modification_time: '201901010000.01'
+        access_time: '201901010000.01'
+
+

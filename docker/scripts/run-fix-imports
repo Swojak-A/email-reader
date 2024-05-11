@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+cd /backend  || exit  # going to the main directory of the project
+
+ruff check .  --select I --fix

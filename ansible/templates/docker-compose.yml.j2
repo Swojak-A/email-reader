@@ -1,0 +1,138 @@
+version: "3"
+
+networks:
+  app-tier:
+    driver: bridge
+
+services:
+  zookeeper:
+    container_name: {{ APP_NAME }}-zookeeper
+    image: zookeeper
+    networks:
+      - app-tier
+
+  rabbitmq:
+    container_name: {{ APP_NAME }}-rabbitmq
+    image: {{ RABBITMQ_IMAGE }}:{{ RABBITMQ_TAG }}
+    hostname: rabbitmq
+    networks:
+      - app-tier
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "a9c95fd0b04b34ed7d62caa63be6cd07"
+      RABBITMQ_DEFAULT_USER: "{{ ENV.RABBITMQ_USERNAME }}"
+      RABBITMQ_DEFAULT_PASS: "{{ ENV.RABBITMQ_PASSWORD }}"
+      RABBITMQ_DEFAULT_VHOST: "{{ ENV.RABBITMQ_VHOST }}"
+{% if ENV.ENVIRONMENT == 'local' %}
+    volumes:
+      - ./.datastore/rabbitmq:/var/lib/rabbitmq
+{% endif %}
+
+  redis:
+    container_name: {{ APP_NAME }}-redis
+    image: redis:latest
+    networks:
+      - app-tier
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    volumes:
+      - ./.datastore/redis:/data
+{% endif %}
+
+  postgresql:
+    container_name: {{ APP_NAME }}-postgresql
+    image: postgres:14
+    environment:
+      POSTGRES_USER: "{{ ENV.DATABASE_USER }}"
+      POSTGRES_DB: "{{ ENV.DATABASE_NAME }}"
+      POSTGRES_PASSWORD: "{{ ENV.DATABASE_PASSWORD }}"
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8"
+    networks:
+      - app-tier
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    volumes:
+      - ./.datastore/postgresql:/var/lib/postgresql/data
+{% endif %}
+
+  backend:
+    container_name: {{ APP_NAME }}-backend
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    image: email-reader:latest
+{% else %}
+    image: {{ ENV.APP_IMAGE }}:{{ ENV.DOCKER_TAG }}
+{% endif %}
+    depends_on:
+      - postgresql
+      - rabbitmq
+      - redis
+      - zookeeper
+    networks:
+      - app-tier
+    env_file: .environment
+    environment:
+      APPLICATION_TYPE: backend
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    volumes:
+      - ./backend:/backend
+      - ./docker/scripts:/scripts
+    ports:
+      - "8000:8000"
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+{% endif %}
+{% if APPLICATION.ENVIRONMENT == 'ci' %}
+    volumes:
+      - ./docker/scripts:/scripts
+{% endif %}
+
+{% if ENV.ENVIRONMENT == 'local' %}
+  celerybeat:
+    container_name: {{ APP_NAME }}-celerybeat
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    image: email-reader:latest
+{% else %}
+    image: {{ ENV.APP_IMAGE }}:{{ ENV.DOCKER_TAG }}
+{% endif %}
+    depends_on:
+      - postgresql
+      - rabbitmq
+      - redis
+      - zookeeper
+    networks:
+      - app-tier
+    env_file: .environment
+    environment:
+      APPLICATION_TYPE: worker
+      CELERY_PROCESS: celerybeat
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    volumes:
+      - ./backend:/backend
+      - ./docker/scripts:/scripts
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+{% endif %}
+{% endif %}
+
+{% for queue in WORKER_QUEUE_NAME %}
+  worker_{{ queue }}:
+    container_name: {{ APP_NAME }}-worker_{{ queue }}
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    image: email-reader:latest
+{% else %}
+    image: {{ ENV.APP_IMAGE }}:{{ ENV.DOCKER_TAG }}
+{% endif %}
+    depends_on:
+      - postgresql
+      - rabbitmq
+      - redis
+      - zookeeper
+    networks:
+      - app-tier
+    env_file: .environment
+    environment:
+      CELERY_QUEUE_NAME: {{ queue }}
+      APPLICATION_TYPE: worker
+      CELERY_PROCESS: worker
+{% if APPLICATION.ENVIRONMENT == 'local' %}
+    volumes:
+      - ./backend:/backend
+      - ./docker/scripts:/scripts
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+{% endif %}
+{% endfor %}

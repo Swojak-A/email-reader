@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+cd $( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd ) || exit 1
+
+cd /backend
+
+./manage.py makemessages --no-location -a -i translations_checking
+
+locale=`find locale | grep "\.po"`
+for l in $locale;
+do
+    sed -i '/^"POT-Creation-Date/d' $l
+done
