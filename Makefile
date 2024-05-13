@@ -18,43 +18,43 @@ help:
 	@echo -e "\tmake run-black"
 	@echo -e "\tmake run-fix-imports"
 
-DOCKER_COMPOSE := $(shell which docker-compose 2> /dev/null)
-ifndef DOCKER_COMPOSE
-	DOCKER_COMPOSE := docker compose
+DOCKER := $(shell which docker 2> /dev/null)
+ifndef DOCKER
+	DOCKER := docker
 endif
 
 poetry:
-	$(DOCKER_COMPOSE) run --rm -uroot backend poetry $(filter-out $@,$(MAKECMDGOALS))
+	$(DOCKER) compose run --rm -uroot backend poetry $(filter-out $@,$(MAKECMDGOALS))
 
 manage:
-	$(DOCKER_COMPOSE) exec backend python manage.py $(filter-out $@,$(MAKECMDGOALS))
+	$(DOCKER) compose exec backend python manage.py $(filter-out $@,$(MAKECMDGOALS))
 
 test:
-	$(DOCKER_COMPOSE) exec backend pytest $(filter-out $@,$(MAKECMDGOALS))
+	$(DOCKER) compose exec backend pytest $(filter-out $@,$(MAKECMDGOALS))
 
 test-cov:
-	$(DOCKER_COMPOSE) exec backend bash -c "pytest --cov=. --cov-report=html"
+	$(DOCKER) compose exec backend bash -c "pytest --cov=. --cov-report=html"
 
 verify:
-	$(DOCKER_COMPOSE) exec backend /scripts/run-verify
+	$(DOCKER) compose exec backend /scripts/run-verify
 
 run-black:
-	$(DOCKER_COMPOSE) exec backend /scripts/run-black
+	$(DOCKER) compose exec backend /scripts/run-black
 
 run-ruff:
-	$(DOCKER_COMPOSE) exec backend /scripts/run-ruff
+	$(DOCKER) compose exec backend /scripts/run-ruff
 
 run-fix-imports:
-	$(DOCKER_COMPOSE) exec backend /scripts/run-fix-imports
+	$(DOCKER) compose exec backend /scripts/run-fix-imports
 
 up:
-	$(DOCKER_COMPOSE) up -d
+	$(DOCKER) compose up -d
 
 logs:
-	$(DOCKER_COMPOSE) logs -f $(filter-out $@,$(MAKECMDGOALS))
+	$(DOCKER) compose logs -f $(filter-out $@,$(MAKECMDGOALS))
 
 down:
-	$(DOCKER_COMPOSE) down
+	$(DOCKER) compose down
 
 %:
 	@:
