@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "utils",
     "modules.healthchecks",
     "modules.users",
+    "modules.email_reader",
 ]
 
 MIDDLEWARE = [
