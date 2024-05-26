@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "scheduler",
     "utils",
     "modules.healthchecks",
+    "modules.core",
     "modules.users",
     "modules.email_reader",
 ]
