@@ -1,12 +1,13 @@
+import email
 import imaplib
 
 from django.conf import settings
-import email
 
 from modules.email_reader.exceptions import (
     EmailReaderInvalidStatusException,
     NoEmailsFoundException,
 )
+from modules.email_reader.dto import EmailDto, EmailAttachmentDto
 
 
 class EmailReader:
@@ -70,12 +71,15 @@ class EmailReader:
         status, messages_data = self.mail.search(None, criteria)
         if status != "OK":
             raise EmailReaderInvalidStatusException(status)
-        email_ids = messages_data[0].split()
+        email_ids = [x.decode("utf8") for x in messages_data[0].split()]
         if not email_ids:
             raise NoEmailsFoundException()
         return email_ids
 
     def extract_email(self, email_id):
+        # defensive approach to avoid `bytes` being passed in
+        assert isinstance(email_id, str)
+
         self.mail.select("inbox")
         status, data = self.mail.fetch(email_id, "(RFC822)")
         if status != "OK":
@@ -103,24 +107,35 @@ class EmailReader:
                     attachments.append({"filename": filename, "data": file_data})
                     attachments_mime_types.append(mime_type)
 
-        return {
-            "email_id": email_id,
-            "sender": sender,
-            "receiver": receiver,
-            "cc": cc,
-            "subject": subject,
-            "sent_at": date,
-            "message_id": message_id,
-            "body": body,
-            "has_attachments": has_attachments,
-            "attachments": attachments,
-            "attachments_mime_types": attachments_mime_types,
-        }
+        attachments_dtos = [
+            EmailAttachmentDto(
+                filename=attachment["filename"],
+                data=attachment["data"],
+                mime_type=attachment_mime_type,
+            )
+            for attachment, attachment_mime_type in zip(
+                attachments, attachments_mime_types
+            )
+        ]
+        email_dto = EmailDto(
+            email_id=email_id,
+            sender=sender,
+            receiver=receiver,
+            cc=cc,
+            subject=subject,
+            body=body,
+            sent_at=date,
+            message_id=message_id,
+            has_attachments=has_attachments,
+            attachments=attachments_dtos,
+        )
+        return email_dto
 
-    def process_email_extraction(self):
+    def process_emails_extraction(self):
         with self:
             email_ids = self.fetch_email_ids()
             emails = []
             for email_id in email_ids:
                 email_data = self.extract_email(email_id)
                 emails.append(email_data)
+        return emails
