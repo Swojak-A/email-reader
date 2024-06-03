@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 from django.core.files.base import ContentFile
 from modules.email_reader.utils import (
     parse_datetime_to_django_timezone,
@@ -7,11 +8,14 @@ from modules.email_reader.utils import (
 from modules.email_reader.models import Email, EmailAttachment
 
 
-class EmailAttachmentDto:
-    def __init__(self, filename: str, data: bytes, mime_type: str):
-        self.filename = filename
-        self.data = data
-        self.mime_type = mime_type
+class EmailAttachmentDto(BaseModel):
+    filename: str
+    data: bytes
+    mime_type: str
+
+    @property
+    def file(self):
+        return convert_bytestring_to_file(self.filename, self.data)
 
     def to_model(self, email):
         email_attachment = EmailAttachment(
@@ -19,8 +23,9 @@ class EmailAttachmentDto:
             filename=self.filename,
             mime_type=self.mime_type,
         )
-        file = convert_bytestring_to_file(self.filename, self.data)
-        email_attachment.file.save(self.filename, ContentFile(file.read()), save=True)
+        email_attachment.file.save(
+            self.filename, ContentFile(self.file.read()), save=True
+        )
         email_attachment.save()
         return email_attachment
 
@@ -31,30 +36,18 @@ class EmailAttachmentDto:
             "mime_type": self.mime_type,
         }
 
-class EmailDto:
-    def __init__(
-        self,
-        email_id: str,
-        sender: str,
-        receiver: str,
-        cc: str | None,
-        subject: str,
-        body: str,
-        sent_at: str,
-        message_id: str,
-        has_attachments: bool,
-        attachments: List[EmailAttachmentDto],
-    ):
-        self.email_id = email_id
-        self.sender = sender
-        self.receiver = receiver
-        self.cc = cc
-        self.subject = subject
-        self.body = body
-        self.sent_at = sent_at
-        self.message_id = message_id
-        self.has_attachments = has_attachments
-        self.attachments = attachments
+
+class EmailDto(BaseModel):
+    email_id: str
+    sender: str
+    receiver: str
+    cc: Optional[str]
+    subject: str
+    body: str
+    sent_at: str
+    message_id: str
+    has_attachments: bool
+    attachments: List[EmailAttachmentDto]
 
     def to_model(self):
         email = Email(
