@@ -259,8 +259,8 @@ if SENTRY_ENABLED:
 # CELERY TASK
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_BEAT_SCHEDULE = {
-    "scheduler.tasks.celerybeat_healthcheck": {
-        "task": "scheduler.tasks.celerybeat_healthcheck",
+    "celerybeat_healthcheck_periodic_task": {
+        "task": "celerybeat_healthcheck",
         "schedule": crontab(minute="*/1"),
     },
 }
@@ -270,7 +270,10 @@ CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_DEFAULT_QUEUE = "misc"
 CELERY_TASK_SERIALIZER = "json"
+CELERY_TRACK_STARTED = True
+CELERY_TASK_TRACK_STARTED = True
 CELERY_TIMEZONE = "UTC"
+CELERY_RESULT_EXTENDED = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
 APPEND_SLASH = True
