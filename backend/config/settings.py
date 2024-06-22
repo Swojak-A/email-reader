@@ -261,7 +261,11 @@ CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_BEAT_SCHEDULE = {
     "celerybeat_healthcheck_periodic_task": {
         "task": "celerybeat_healthcheck",
-        "schedule": crontab(minute="*/1"),
+        "schedule": crontab(minute="*/5"),
+    },
+    "check_and_extract_new_emails_periodic_task": {
+        "task": "check_and_extract_new_emails",
+        "schedule": crontab(minute="*/5"),
     },
 }
 
