@@ -1,13 +1,15 @@
 import email
 import imaplib
+from collections.abc import Iterable
 
 from django.conf import settings
 
+from modules.email_reader.dto import EmailAttachmentDto, EmailDto
 from modules.email_reader.exceptions import (
     EmailReaderInvalidStatusException,
     NoEmailsFoundException,
 )
-from modules.email_reader.dto import EmailDto, EmailAttachmentDto
+from modules.email_reader.models import EmailAddress
 
 
 class EmailReader:
@@ -16,21 +18,53 @@ class EmailReader:
         host=settings.EMAIL_READER_HOST,
         username=settings.EMAIL_READER_USERNAME,
         password=settings.EMAIL_READER_PASSWORD,
+        email_addresses_whitelist=None,
     ):
         self.host = host
         self.username = username
         self.password = password
         self.mail = imaplib.IMAP4_SSL(self.host)
-        self.email_addresses_whitelist = ["example@example.com", "example2@example.com"]
+        self.email_addresses_whitelist = self._set_email_addresses_whitelist(
+            email_addresses_whitelist
+        )
         self.criteria = self._construct_criteria()
+
+    def _assert_correct_email_addresses_whitelist(self, email_addresses_whitelist):
+        if not email_addresses_whitelist:
+            raise ValueError("Email addresses whitelist cannot be empty")
+        if not isinstance(email_addresses_whitelist, Iterable):
+            raise ValueError("Email addresses whitelist must be an iterable")
+        if isinstance(email_addresses_whitelist, (str, bytes)):
+            raise ValueError("Email addresses whitelist cannot be a string")
+        if not all(isinstance(email, str) for email in email_addresses_whitelist):
+            raise ValueError("All email addresses must be strings")
+
+    def _get_default_email_addresses_whitelist(self):
+        email_addresses_whitelist = EmailAddress.objects.filter(
+            is_whitelisted=True
+        ).values_list("email", flat=True)
+        return email_addresses_whitelist
+
+    def _set_email_addresses_whitelist(self, email_addresses_whitelist):
+        if email_addresses_whitelist is None:
+            email_addresses_whitelist = self._get_default_email_addresses_whitelist()
+        self._assert_correct_email_addresses_whitelist(email_addresses_whitelist)
+        return [email.lower().strip() for email in email_addresses_whitelist]
 
     def _construct_criteria(self):
         unseen_criteria = "UNSEEN"
-        email_addresses_criteria = "OR " + " ".join(
-            [f'(FROM "{email}")' for email in self.email_addresses_whitelist]
-        )
-        criteria = " ".join([unseen_criteria, email_addresses_criteria])
-        return criteria
+        if not self.email_addresses_whitelist:
+            return unseen_criteria
+        if len(self.email_addresses_whitelist) == 1:
+            email_address_criteria = f'FROM "{self.email_addresses_whitelist[0]}"'
+            criteria = " ".join([unseen_criteria, email_address_criteria])
+            return criteria
+        else:
+            email_addresses_criteria = "OR " + " ".join(
+                [f'(FROM "{email}")' for email in self.email_addresses_whitelist]
+            )
+            criteria = " ".join([unseen_criteria, email_addresses_criteria])
+            return criteria
 
     def _get_body(self, msg):
         if msg.is_multipart():
@@ -78,7 +112,10 @@ class EmailReader:
 
     def extract_email(self, email_id):
         # defensive approach to avoid `bytes` being passed in
-        assert isinstance(email_id, str)
+        if not isinstance(email_id, str):
+            raise TypeError(
+                f"Expected 'email_id' to be a str, but got {type(email_id).__name__}"
+            )
 
         self.mail.select("inbox")
         status, data = self.mail.fetch(email_id, "(RFC822)")
@@ -114,7 +151,7 @@ class EmailReader:
                 mime_type=attachment_mime_type,
             )
             for attachment, attachment_mime_type in zip(
-                attachments, attachments_mime_types
+                attachments, attachments_mime_types, strict=True
             )
         ]
         email_dto = EmailDto(
@@ -132,6 +169,7 @@ class EmailReader:
         return email_dto
 
     def process_emails_extraction(self):
+        # `with self` will wrap the login and logout methods
         with self:
             email_ids = self.fetch_email_ids()
             emails = []

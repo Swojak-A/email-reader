@@ -6,6 +6,26 @@ from django.utils.translation import gettext_lazy as _
 from modules.core.models import BaseModel
 
 
+class EmailAddress(BaseModel):
+    email = models.EmailField(
+        verbose_name=_("Email"), validators=[EmailValidator], unique=True
+    )
+    is_whitelisted = models.BooleanField(
+        verbose_name=_("Is Whitelisted"),
+        default=False,
+        blank=True,
+        help_text="Field used to determine whether the email address is whitelisted "
+        "for querying via IMAP protocol.",
+    )
+
+    class Meta:
+        verbose_name = _("Email Address")
+        verbose_name_plural = _("Email Addresses")
+
+    def __str__(self):
+        return self.email
+
+
 class Email(BaseModel):
     email_id = models.CharField(
         verbose_name=_("Email ID"), max_length=255, default="", blank=True
