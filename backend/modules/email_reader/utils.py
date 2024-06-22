@@ -1,13 +1,14 @@
 import io
 import re
 from datetime import datetime
-import pytz
+
 from django.utils import timezone
+
+import pytz
 
 
 def parse_datetime_to_django_timezone(date_str):
-    date_format = "%a, %d %b %Y %H:%M:%S %z"
-    naive_dt = datetime.strptime(date_str, date_format)
+    naive_dt = datetime.strptime(date_str, "%a, %d %b %Y %H:%M:%S %z")
     utc_dt = naive_dt.astimezone(pytz.utc)
     django_dt = timezone.localtime(utc_dt)
     return django_dt
