@@ -1,11 +1,15 @@
 from typing import List, Optional
-from pydantic import BaseModel
+
 from django.core.files.base import ContentFile
-from modules.email_reader.utils import (
-    parse_datetime_to_django_timezone,
-    convert_bytestring_to_file,
-)
+
+from pydantic import BaseModel
+
 from modules.email_reader.models import Email, EmailAttachment
+from modules.email_reader.utils import (
+    convert_bytestring_to_file,
+    extract_email_address,
+    parse_datetime_to_django_timezone,
+)
 
 
 class EmailAttachmentDto(BaseModel):
@@ -52,8 +56,8 @@ class EmailDto(BaseModel):
     def to_model(self):
         email = Email(
             email_id=self.email_id,
-            sender=self.sender,
-            receiver=self.receiver,
+            sender=extract_email_address(self.sender),
+            receiver=extract_email_address(self.receiver),
             subject=self.subject,
             body=self.body,
             sent_at=parse_datetime_to_django_timezone(self.sent_at),
@@ -67,9 +71,8 @@ class EmailDto(BaseModel):
     def to_dict(self):
         return {
             "email_id": self.email_id,
-            "sender": self.sender,
-            "receiver": self.receiver,
-            "cc": self.cc,
+            "sender": extract_email_address(self.sender),
+            "receiver": extract_email_address(self.receiver),
             "subject": self.subject,
             "body": self.body,
             "sent_at": self.sent_at,
