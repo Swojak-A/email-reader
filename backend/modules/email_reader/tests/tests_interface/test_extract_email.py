@@ -13,6 +13,10 @@ from modules.email_reader.tests.utils import (
 
 
 class TestEmailReaderExtractEmail:
+    @pytest.fixture(autouse=True)
+    def setup_method(self, mocker):
+        self.mock_imap = mocker.patch("imaplib.IMAP4_SSL")
+
     def test_email_without_attachments(self, mocker):
         imap_mock = mocker.patch("modules.email_reader.interface.imaplib.IMAP4_SSL")
         mock_instance = imap_mock.return_value
@@ -23,7 +27,7 @@ class TestEmailReaderExtractEmail:
         )
 
         reader = EmailReader(
-            host="testhost.com",
+            host="example.com",
             username="testuser",
             password="testpass",  # noqa: S106
             email_addresses_whitelist=["sender@example.com"],
@@ -44,7 +48,7 @@ class TestEmailReaderExtractEmail:
         )
 
         reader = EmailReader(
-            host="testhost.com",
+            host="example.com",
             username="testuser",
             password="testpass",  # noqa: S106
             email_addresses_whitelist=["sender@example.com"],
@@ -66,7 +70,7 @@ class TestEmailReaderExtractEmail:
         )
 
         reader = EmailReader(
-            host="testhost.com",
+            host="example.com",
             username="testuser",
             password="testpass",  # noqa: S106
             email_addresses_whitelist=("sender@example.com",),

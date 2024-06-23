@@ -8,6 +8,10 @@ from modules.email_reader.interface import EmailReader
 
 
 class TestEmailReaderFetchEmailIds:
+    @pytest.fixture(autouse=True)
+    def setup_method(self, mocker):
+        self.mock_imap = mocker.patch("imaplib.IMAP4_SSL")
+
     def test_successful_fetching_email_ids(self, mocker):
         imap_mock = mocker.patch("modules.email_reader.interface.imaplib.IMAP4_SSL")
         mock_instance = imap_mock.return_value
@@ -16,7 +20,7 @@ class TestEmailReaderFetchEmailIds:
         mock_instance.search.return_value = ("OK", [b"1 2 3"])
 
         reader = EmailReader(
-            host="testhost.com",
+            host="example.com",
             username="testuser",
             password="testpass",  # noqa: S106
             email_addresses_whitelist=["sender@example.com"],
@@ -34,7 +38,7 @@ class TestEmailReaderFetchEmailIds:
         mock_instance.search.return_value = ("OK", [b"1"])
 
         reader = EmailReader(
-            host="testhost.com",
+            host="example.com",
             username="testuser",
             password="testpass",  # noqa: S106
             email_addresses_whitelist=["sender@example.com"],
@@ -52,7 +56,7 @@ class TestEmailReaderFetchEmailIds:
         mock_instance.search.return_value = ("NO", [])
 
         reader = EmailReader(
-            host="testhost.com",
+            host="example.com",
             username="testuser",
             password="testpass",  # noqa: S106
             email_addresses_whitelist=["sender@example.com"],
@@ -70,7 +74,7 @@ class TestEmailReaderFetchEmailIds:
         mock_instance.search.return_value = ("OK", [b""])
 
         reader = EmailReader(
-            host="testhost.com",
+            host="example.com",
             username="testuser",
             password="testpass",  # noqa: S106
             email_addresses_whitelist=["sender@example.com"],
