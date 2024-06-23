@@ -30,7 +30,7 @@ manage:
 	$(DOCKER) compose exec backend python manage.py $(filter-out $@,$(MAKECMDGOALS))
 
 test:
-	$(DOCKER) compose exec backend pytest $(filter-out $@,$(MAKECMDGOALS))
+	$(DOCKER) compose exec backend pytest -s $(filter-out $@,$(MAKECMDGOALS)) --maxfail=1 -vvv
 
 test-cov:
 	$(DOCKER) compose exec backend bash -c "pytest --cov=. --cov-report=html"

@@ -75,7 +75,9 @@ INSTALLED_APPS = [
     "scheduler",
     "utils",
     "modules.healthchecks",
+    "modules.core",
     "modules.users",
+    "modules.email_reader",
 ]
 
 MIDDLEWARE = [
@@ -257,9 +259,13 @@ if SENTRY_ENABLED:
 # CELERY TASK
 CELERY_ACCEPT_CONTENT = ["application/json"]
 CELERY_BEAT_SCHEDULE = {
-    "scheduler.tasks.celerybeat_healthcheck": {
-        "task": "scheduler.tasks.celerybeat_healthcheck",
-        "schedule": crontab(minute="*/1"),
+    "celerybeat_healthcheck_periodic_task": {
+        "task": "celerybeat_healthcheck",
+        "schedule": crontab(minute="*/5"),
+    },
+    "check_and_extract_new_emails_periodic_task": {
+        "task": "check_and_extract_new_emails",
+        "schedule": crontab(minute="*/5"),
     },
 }
 
@@ -268,7 +274,10 @@ CELERY_RESULT_BACKEND = "django-db"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_DEFAULT_QUEUE = "misc"
 CELERY_TASK_SERIALIZER = "json"
+CELERY_TRACK_STARTED = True
+CELERY_TASK_TRACK_STARTED = True
 CELERY_TIMEZONE = "UTC"
+CELERY_RESULT_EXTENDED = True
 CELERY_WORKER_HIJACK_ROOT_LOGGER = False
 
 APPEND_SLASH = True
@@ -334,3 +343,9 @@ LOGGING = {
         },
     },
 }
+
+# EMAIL READER CONFIG
+
+EMAIL_READER_HOST = get_env("EMAIL_READER_HOST")
+EMAIL_READER_USERNAME = get_env("EMAIL_READER_USERNAME")
+EMAIL_READER_PASSWORD = get_env("EMAIL_READER_PASSWORD")
